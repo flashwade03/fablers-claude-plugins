@@ -1,6 +1,6 @@
 ---
 name: vibe-design
-description: This skill should be used when the user asks to "design a feature", "create architecture", "plan a system", "how much design do I need?", "should I write a spec?", "is this over-engineered?", "설계해줘", "아키텍처 잡아줘", "설계 범위 정해줘", "기획 문서 써야 할까?", or when the user is about to enter plan mode for a non-trivial feature. Guides design scope to match requirement size using 3 levels (no design, inline design, document design), preventing over-specification that kills vibe coding productivity.
+description: This skill should be used when the user explicitly asks to "design a feature", "create architecture", "plan a system", "how much design do I need?", "should I write a spec?", "is this over-engineered?", "설계해줘", "아키텍처 잡아줘", "설계 범위 정해줘", "기획 문서 써야 할까?". This skill must be explicitly invoked — do NOT trigger automatically before plan mode or implementation. Guides design scope to match requirement size using 3 levels (no design, inline design, document design), preventing over-specification that kills vibe coding productivity.
 ---
 
 # Vibe Design
