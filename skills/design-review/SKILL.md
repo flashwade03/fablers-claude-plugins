@@ -1,6 +1,6 @@
 ---
 name: design-review
-description: This skill should be used when the user explicitly asks to "review my design", "score this design", "evaluate my design", "rate this design", "design quality check", "설계 리뷰해줘", "설계 평가해줘", "이 설계 괜찮아?", "설계 점수 매겨줘". Scores design documents against 6 vibe coding axes (decision purity, rationale, milestone scope, context budget, constraint quality, CLAUDE.md alignment) and outputs Grade (S~F), Score (0-100), and detailed feedback.
+description: This skill should be used when the user explicitly asks to "review my design", "score this design", "evaluate my design", "rate this design", "design quality check", "설계 리뷰해줘", "설계 평가해줘", "이 설계 괜찮아?", "설계 점수 매겨줘". Scores design documents against 6 vibe coding axes (decision purity, rationale, decision maturity, context budget, constraint quality, CLAUDE.md alignment) and outputs Grade (S~F), Score (0-100), and detailed feedback.
 ---
 
 # Design Review
@@ -11,7 +11,7 @@ Score a design document against vibe coding principles. Output: Grade (S~F), Sco
 
 ## Input
 
-Read the design document the user points to. If no specific file is given, check `docs/plans/` (project convention) for the most recent design document. If that path does not exist, ask the user to specify the file. Also read the project's CLAUDE.md for Axis 6 cross-reference.
+유저가 지정한 문서만 평가 대상으로 한다. 유저가 대상 문서를 명시하지 않으면 재질문할 것. 다른 문서를 자동 탐색하지 말 것. CLAUDE.md는 Axis 6 평가를 위해 읽는다.
 
 ## Step 1: Score Each Axis
 
@@ -45,15 +45,15 @@ Detection: scan for code blocks, function names with parentheses, type annotatio
 
 Detection: look for bare bullet points stating decisions without "because", "to ensure", "so that", or contextual justification.
 
-### Axis 3: Milestone Scope
+### Axis 3: Decision Maturity
 
-> Does the document cover exactly ONE milestone?
+> 확정 결정과 후보 항목이 명확히 구분되어 있는가?
 
-**PASS**: Clear single milestone. Out-of-scope items explicitly listed.
-**WARN**: Scope section exists but some decisions belong to future milestones.
-**FAIL**: No scope section, or document covers the entire system lifecycle.
+**PASS**: 확정 결정에만 "because" 근거가 있고, 후보 항목은 별도 섹션에 근거 없이 목록으로 분리.
+**WARN**: 후보 항목이 분리되어 있으나 일부에 "because" 근거가 달려있음 (과잉 확정).
+**FAIL**: 확정/후보 구분이 없음. 모든 항목이 동일한 톤으로 작성.
 
-Detection: look for error recovery, monitoring, scaling, graceful shutdown in a v0 document. Look for missing "Out of scope" section.
+Detection: 후보 항목("v0 이후 검토 방향" 등)에 "because", "— because" 패턴이 있는지 확인. 미래 가정에 기반한 근거("외부 사용자가 필요하므로", "장기 운영 시")가 확정 결정처럼 쓰여있는지 확인.
 
 ### Axis 4: Context Budget
 
@@ -77,13 +77,13 @@ Detection: look for specific library names, framework APIs, or file path pattern
 
 ### Axis 6: CLAUDE.md Alignment
 
-> Are the design's resulting facts reflected in CLAUDE.md?
+> CLAUDE.md가 설계 문서에 링크하고, 설계 내용을 복제하지 않는가?
 
-**PASS**: Tech stack, rules, folder structure in CLAUDE.md match the design's decisions.
-**WARN**: Minor gaps — a new technology or rule not yet reflected.
-**FAIL**: Design introduces major architectural elements absent from CLAUDE.md, OR CLAUDE.md contains design rationale/narrative instead of facts.
+**PASS**: CLAUDE.md가 설계 문서를 링크(참조 시점 포함)하고, 기술 스택/규칙만 팩트로 포함. 설계 내용(아키텍처, 상태 머신, 도구 목록)은 설계 문서에만 있음.
+**WARN**: 설계 문서 링크가 없거나, 일부 설계 내용이 CLAUDE.md에 중복.
+**FAIL**: CLAUDE.md에 아키텍처 다이어그램, 상태 머신, 도구 목록 등 설계 내용이 복제되어 있음.
 
-Detection: cross-reference the design's tech stack, directory structure, and rules against CLAUDE.md sections. Skip this axis if the design is a draft not yet approved (state this explicitly in output).
+Detection: CLAUDE.md에 설계 문서 링크 테이블이 있는지 확인. 아키텍처 설명, 상태 전이, 도구 목록이 CLAUDE.md에 직접 기술되어 있으면 FAIL. Skip this axis if the design is a draft not yet approved (state this explicitly in output).
 
 ---
 
@@ -121,7 +121,7 @@ Use this exact format:
 |------|-------|--------|
 | Decision Purity | PASS/WARN/FAIL | 2/1/0 |
 | Rationale Presence | PASS/WARN/FAIL | 2/1/0 |
-| Milestone Scope | PASS/WARN/FAIL | 2/1/0 |
+| Decision Maturity | PASS/WARN/FAIL | 2/1/0 |
 | Context Budget | PASS/WARN/FAIL | 2/1/0 |
 | Constraint Quality | PASS/WARN/FAIL | 2/1/0 |
 | CLAUDE.md Alignment | PASS/WARN/FAIL | 2/1/0 |
@@ -147,8 +147,8 @@ For a complete example of review output, see `examples/sample-review.md`.
 
 ## Edge Cases
 
-- **No design document exists**: Suggest the user run the vibe-design skill first.
-- **Level 0/1 requirement with a Level 2 document**: FAIL on Milestone Scope — the requirement didn't need a document.
+- **대상 문서 미지정**: 유저에게 재질문. 자동 탐색하지 말 것.
+- **Level 0/1 requirement with a Level 2 document**: FAIL on Decision Maturity — the requirement didn't need a document.
 - **Design is intentionally detailed for a complex domain**: Complexity justifies more DECISIONS, not more IMPLEMENTATION details. Principles still apply.
 - **3+ review rounds already**: The document likely contains too much implementation detail. Read `references/review-cycle-warning.md` and flag this in the assessment.
 

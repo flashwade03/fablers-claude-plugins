@@ -11,6 +11,14 @@ Guide the design process to produce exactly the right amount of specification fo
 
 Over-specification is as harmful as under-specification. Pseudocode in design documents creates consistency problems that require endless review cycles. AI can generate implementation from decisions — specifying implementation details constrains AI and introduces bugs that wouldn't exist otherwise.
 
+## Step 0: Confirm Input Documents
+
+대상 문서를 유저에게 확인할 것. 유저가 명시하지 않으면 재질문.
+
+- 유저가 `@docs/features/` 등으로 지정 → 해당 파일만 작업 대상
+- 지정 없이 "설계해줘" → "어떤 문서/영역을 대상으로 할까요?" 재질문
+- **전달받은 문서 외 다른 문서를 참조해서 스코프를 판단하지 말 것.** 다른 문서 참조가 필요하면 유저에게 물어볼 것.
+
 ## Step 1: Determine Scope Level
 
 Before any design work, classify the requirement:
@@ -49,25 +57,35 @@ Format:
 - New subsystem (authentication, real-time sync, etc.)
 - Decisions that change how future features get built
 
-**Action**: Write a design document scoped to the NEXT milestone only.
+**Action**: Write a design document.
 
-## Step 2: Scope Boundary (Level 2 Only)
+## Step 2: Decision Maturity (Level 2 Only)
 
-Before writing, define the milestone boundary. Ask:
+문서 안의 모든 결정을 **확정**과 **후보**로 구분할 것.
 
-> "What is the smallest thing I can build that works end-to-end?"
+- **확정 결정**: 현재 마일스톤에서 구현할 것. 근거가 검증된 현재 제약에 기반. → "because" 근거 포함
+- **후보 항목**: 나중에 필요할 수 있는 것. 아직 그 고통을 경험하지 않음. → 근거 없이 불릿 리스트로만 표기
 
-That is v0. Design ONLY v0. Everything else is deferred.
+### 구분 기준
 
-Example milestones for a web service (adapt to the actual project):
+각 결정에 대해 물어볼 것: **"이 결정의 근거가 지금 검증된 제약인가, 아직 경험하지 않은 추측인가?"**
 
-| Milestone | Design Now | Defer to Later |
-|-----------|-----------|----------------|
-| v0: Basic end-to-end flow | Core structure, execution method, data flow | Multi-tenancy, error recovery, optimization |
-| v1: Multi-user/project | Isolation strategy, resource management | Monitoring, graceful degradation |
-| v2: Production stability | Recovery, health checks, shutdown | Analytics, A/B testing, scaling |
+- 근거가 현재 사실이면 → 확정 결정 (예: "2인 팀이므로" — 지금 사실)
+- 근거가 미래 가정이면 → 후보 항목 (예: "외부 사용자가 필요하므로" — 아직 없음)
 
-Each version must work independently. The design for v1 should not require changing v0's architecture.
+### 후보 항목 작성 패턴
+
+후보 항목은 문서 하단에 별도 섹션으로 모을 것:
+
+```
+## v0 이후 검토 방향 (확정 아님 — v0 사용 경험 후 결정)
+
+- 채팅 히스토리 DB 저장/복원
+- Health sweep (자가 진단)
+- Google OAuth
+```
+
+**금지**: 후보 항목에 "because" 근거를 달지 말 것. 근거를 달면 확정된 결정처럼 보인다.
 
 ## Step 3: Domain Decision Checklist (Level 2 Only)
 
@@ -89,7 +107,7 @@ When writing a Level 2 design document, follow these principles strictly. Read `
 1. **Decisions Only** — Record what was decided and why. Not implementation.
 2. **Why, Not How** — AI generates implementation from decisions. Specifying "how" creates constraints and cascading consistency issues.
 3. **Context Window Budget** — The design is AI's system prompt. Core design must fit ~200-300 lines. Details go in separate reference files.
-4. **Milestone-Scoped** — Design only what the next milestone requires. Defer everything else explicitly.
+4. **Decision Maturity** — 확정 결정은 근거 포함, 후보 항목은 근거 없이 목록만. (Step 2 참조)
 5. **Constraints Over Prescriptions** — Tell AI what NOT to do. Leave the rest to AI's judgment.
 
 ## Step 5: Write the Design Document
@@ -137,9 +155,9 @@ Before moving to implementation, check:
 
 - [ ] Can the design fit as a section in CLAUDE.md? (~200-300 lines)
 - [ ] Does every sentence describe a DECISION or CONSTRAINT, not an implementation?
-- [ ] Is the scope limited to ONE milestone?
+- [ ] 확정 결정에만 "because" 근거가 있는가? 후보 항목에 근거가 달려있지 않은가?
 - [ ] Would removing any section make implementation ambiguous? (If not, remove it)
-- [ ] Are deferred items explicitly listed in "Out of scope"?
+- [ ] 후보 항목이 별도 섹션("v0 이후 검토 방향")으로 분리되어 있는가?
 
 If any check fails, the design is over-specified. Trim it.
 
@@ -147,48 +165,43 @@ If any check fails, the design is over-specified. Trim it.
 
 CLAUDE.md is the project's **system prompt** — loaded into every conversation. It is a concise work instruction manual (~500 lines max) covering: project overview, tech stack, coding guidelines, workflow, folder structure, rules.
 
-Design decisions do NOT go into CLAUDE.md. Only the **resulting facts** do — as one-line updates to existing sections.
+CLAUDE.md는 작업 지침서이지 설계 문서가 아니다. 설계 내용(아키텍처, 상태 머신, 도구 목록 등)은 설계 문서에만 둔다.
 
-**Example:**
+**CLAUDE.md에 들어갈 것:**
+- 설계 문서 링크 + 각 문서의 참조 시점 (테이블 형태)
+- 기술 스택 (무엇을 쓸지)
+- 구현 규칙/금지 사항 (1줄 팩트)
+- 디렉토리 구조 (새 폴더가 추가된 경우)
 
+**CLAUDE.md에 들어가지 말아야 할 것:**
+- 아키텍처 다이어그램, 상태 머신, 도구 목록 (→ 설계 문서)
+- 근거, 대안, 트레이드오프 ("because...")
+- 설계 문서 내용을 그대로 복제
+
+**예시:**
 ```
-Design document says:
-  "서버는 Node.js + Express — because 프론트와 언어 통일, Agent SDK 호환"
+## 설계 문서
+설계 결정은 docs/features/에 있다. 구현 시 해당 영역의 문서를 먼저 읽고 결정 사항을 따를 것.
 
-CLAUDE.md update:
-  ## 기술 스택 섹션에 "서버: Node.js + Express + TypeScript" 한 줄 추가
+| 문서 | 참조 시점 |
+|------|----------|
+| web-service-architecture.md | 전체 구조, 상태 머신, 제약 조건 확인 시 |
 ```
-
-**What to update in CLAUDE.md:**
-- Tech stack section: add/change a technology line
-- Rules section: add a new prohibition or requirement
-- Folder structure: add a new directory if introduced
-- Workflow: add a new step if the user-facing flow changed
-
-**What NEVER goes into CLAUDE.md:**
-- Rationale, alternatives, trade-offs ("because...")
-- Milestone scope or open questions
-- Architecture analysis or design narrative
-- Anything from the design document verbatim
-
-**Rules:**
-- One-line updates to existing sections. Not new paragraphs.
-- If nothing in CLAUDE.md needs to change, skip this step.
-- The design document stays in `docs/plans/` as decision history.
 
 ## Workflow Summary
 
 ```
 Requirement received
+  → 대상 문서 확인 (유저 미지정 시 재질문)
   → Changes within existing code? → Level 0: Implement directly
   → Extends existing architecture? → Level 1: Constraints in prompt
   → New structural decisions? → Level 2:
-      1. Define milestone boundary (smallest working thing)
+      1. 확정/후보 구분 (Decision Maturity)
       2. Load domain checklist → identify decisions needed
       3. Apply 5 principles → write design document
-      4. Validate: fits in context, decisions-only, one milestone
+      4. Validate: fits in context, decisions-only, maturity separated
       5. Get user approval
-      6. Reflect into CLAUDE.md
+      6. Reflect into CLAUDE.md (링크 + 규칙만)
       7. Proceed to implementation
 ```
 
@@ -198,16 +211,16 @@ Before proceeding to implementation, review the checklist below. If the design h
 
 **Quick checklist of what to avoid:**
 - Writing pseudocode and calling it "design"
-- Designing the finished product when building v0
+- 후보 항목에 "because" 근거를 달아 확정 결정처럼 보이게 하기
 - Specifying function signatures before writing code
 - Adding error handling to the design (AI handles this during implementation)
-- Creating separate documents for things that fit in one prompt
-- Leaving design decisions only in docs/plans/ without reflecting into CLAUDE.md
+- 유저가 지정하지 않은 다른 문서를 참조해서 스코프를 판단하기
+- CLAUDE.md에 설계 내용(아키텍처, 상태 머신)을 복제하기
 
 ## Additional Resources
 
 ### Reference Files
 
-- **`references/principles.md`** — Detailed explanation of the 5 design principles with extended examples and rationale
+- **`references/principles.md`** — Detailed explanation of the 5 design principles (including Decision Maturity) with extended examples and rationale
 - **`references/anti-patterns.md`** — Over-specification failure modes derived from real 16-round design review experience
 - **`references/domain-web-service.md`** — Decision checklist for web service projects

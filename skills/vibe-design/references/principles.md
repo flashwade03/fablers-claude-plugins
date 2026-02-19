@@ -105,38 +105,48 @@ A system with 7 tools, 5 state transitions, 6 shared data structures, dynamic po
 
 ---
 
-## Principle 4: Milestone-Scoped
+## Principle 4: Decision Maturity
 
-Design only what the NEXT implementation milestone requires. Designing future milestones prematurely:
+문서 안의 모든 항목을 **확정 결정**과 **후보 항목**으로 구분한다. 구분 기준은 근거의 검증 여부.
 
-1. Creates decisions based on assumptions that may change
-2. Prevents incremental development (can't build v0 without implementing v2's error handling)
-3. Bloats the design with details that compete for context space
+### 구분 기준
 
-### The Milestone Test
+각 결정에 대해 물어볼 것: **"이 결정의 근거가 지금 검증된 제약인가, 아직 경험하지 않은 추측인가?"**
 
-For each decision in the design, ask: "If I remove this, can I still build and demo the current milestone?"
+- **확정 결정**: 근거가 현재 사실에 기반 → "because" 근거 포함
+- **후보 항목**: 근거가 미래 가정에 기반 → 근거 없이 목록만 표기
 
-If yes → defer to a later milestone.
+### Good Examples
 
-### Example: Game Proto Agent
+```
+## 인증 (확정)
+- JWT 24시간 만료, 리프레시 토큰 없음 — because 2인 팀이므로 복잡한 인증 불필요
+- SQLite에 하드코딩 유저 2명 — because 회원가입 시스템은 현재 불필요
 
-**v0 decisions (required to build the basic flow):**
-- Express + WebSocket server
-- Claude Code invoked via `claude -p` subprocess
-- Projects stored in `protos/<userId>/<projectId>/`
-- Boilerplate copied to project directory
-- Single hardcoded port for dev server
+## v0 이후 검토 방향 (확정 아님 — v0 사용 경험 후 결정)
+- Google OAuth
+- Health sweep (자가 진단)
+- 로그 로테이션
+```
 
-**v0 does NOT need:**
-- Dynamic port allocation (only one project at a time in v0)
-- State machine (only one operation: create)
-- Cancel mechanism (just wait for completion)
-- Health monitoring (no concurrent projects to monitor)
-- Crash recovery (restart the server)
-- Proxy registration (single port, static route)
+확정 결정에는 근거가 있고, 후보 항목에는 근거가 없다. 후보의 근거는 경험 후에 생긴다.
 
-Each of these deferred items becomes a v1 or v2 decision, designed when that milestone begins.
+### Bad Examples
+
+```
+## v1: 운영 안정성
+- Health sweep (5분 주기) — because 프로세스 크래시/포트 점유 시 자동 감지 필요
+- 로그 로테이션 — because 장기 운영 시 로그 파일 무한 증가 방지
+```
+
+아직 운영해보지 않았으므로 "프로세스 크래시"와 "장기 운영"은 추측이다. "because"를 달면 확정된 결정처럼 보여서 과잉 설계를 유발한다.
+
+### The Maturity Test
+
+For each "because" in the document, ask: "Have I actually experienced this problem, or am I guessing?"
+
+- Experienced → keep the rationale (확정)
+- Guessing → strip the rationale, move to candidates section (후보)
 
 ---
 
