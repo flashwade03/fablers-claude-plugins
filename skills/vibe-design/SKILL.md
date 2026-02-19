@@ -143,27 +143,38 @@ Before moving to implementation, check:
 
 If any check fails, the design is over-specified. Trim it.
 
-## Step 7: Reflect into CLAUDE.md
+## Step 7: Update CLAUDE.md
 
-CLAUDE.md is a **work instruction manual**, not a design document. It tells AI "do this" — not "we decided this because..." After the design is approved, extract only the actionable directives:
+CLAUDE.md is the project's **system prompt** — loaded into every conversation. It is a concise work instruction manual (~500 lines max) covering: project overview, tech stack, coding guidelines, workflow, folder structure, rules.
 
-**What goes into CLAUDE.md:**
-- Tech stack as facts: `서버: Node.js + Express + TypeScript`
-- Architecture as one-line summary: `서비스 에이전트가 대화, Claude Code가 코딩`
-- Constraints as rules: `Claude Code가 npm run dev 하지 않음`
-- Directory structure, naming conventions, workflow steps
+Design decisions do NOT go into CLAUDE.md. Only the **resulting facts** do — as one-line updates to existing sections.
 
-**What stays ONLY in the design document (docs/plans/):**
-- Rationale ("because...")
-- Alternative approaches considered
-- Milestone scope boundaries
-- Open questions and deferred decisions
+**Example:**
 
-**Rules for reflection:**
-- Strip all rationale. CLAUDE.md states facts and rules, not reasoning.
-- Keep it imperative: "서버는 TypeScript로 작성한다" not "TypeScript를 선택했는데 이유는..."
-- If CLAUDE.md already has the relevant sections, UPDATE them. Do not create duplicates.
-- The design document is history. CLAUDE.md is the living source of truth.
+```
+Design document says:
+  "서버는 Node.js + Express — because 프론트와 언어 통일, Agent SDK 호환"
+
+CLAUDE.md update:
+  ## 기술 스택 섹션에 "서버: Node.js + Express + TypeScript" 한 줄 추가
+```
+
+**What to update in CLAUDE.md:**
+- Tech stack section: add/change a technology line
+- Rules section: add a new prohibition or requirement
+- Folder structure: add a new directory if introduced
+- Workflow: add a new step if the user-facing flow changed
+
+**What NEVER goes into CLAUDE.md:**
+- Rationale, alternatives, trade-offs ("because...")
+- Milestone scope or open questions
+- Architecture analysis or design narrative
+- Anything from the design document verbatim
+
+**Rules:**
+- One-line updates to existing sections. Not new paragraphs.
+- If nothing in CLAUDE.md needs to change, skip this step.
+- The design document stays in `docs/plans/` as decision history.
 
 ## Workflow Summary
 
