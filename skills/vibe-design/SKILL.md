@@ -111,6 +111,20 @@ When writing a Level 2 design document, follow these principles strictly. Read `
 4. **Decision Maturity** — 확정 결정은 근거 포함, 후보 항목은 근거 없이 목록만. (Step 2 참조)
 5. **Constraints Over Prescriptions** — Tell AI what NOT to do. Leave the rest to AI's judgment.
 
+## Step 4.5: Decision-Document Mapping (복수 문서 업데이트 시)
+
+대상 문서가 2개 이상일 때, 작성 전에 각 결정이 어느 문서의 스코프에 해당하는지 매핑한다.
+
+- 하나의 결정이 여러 문서에 해당할 수 있다 — 중복이 아니라 각 문서의 추상화 수준에 맞는 표현이 들어가야 한다.
+- 매핑 테이블을 작성하여 누락을 방지할 것:
+
+| 결정 | 해당 문서 | 표현 수준 |
+|------|----------|----------|
+| [결정 내용] | [문서명] | [이 문서에서의 추상화 수준] |
+
+- 매핑 기준: **"이 결정이 이 문서의 스코프(제목, 첫 문장)에 해당하는가?"**
+- 대상 문서가 1개이면 이 단계를 건너뛴다.
+
 ## Step 5: Write the Design Document
 
 기존 설계 문서가 있으면 해당 문서를 업데이트한다. 새 영역이면 프로젝트의 설계 문서 디렉토리에 새 파일을 생성한다. 저장 경로는 프로젝트의 기존 구조를 따를 것 (예: `docs/features/`, `docs/design/` 등). 유저에게 확인 후 진행.
@@ -199,11 +213,13 @@ Requirement received
   → New structural decisions? → Level 2:
       1. 확정/후보 구분 (Decision Maturity)
       2. Load domain checklist → identify decisions needed
-      3. Apply 5 principles → write design document
-      4. Validate: fits in context, decisions-only, maturity separated
-      5. Get user approval
-      6. Reflect into CLAUDE.md (링크 + 규칙만)
-      7. Proceed to implementation
+      3. Apply 5 principles
+      3.5. 복수 문서 시 결정-문서 매핑 (누락 방지)
+      4. Write design document
+      5. Validate: fits in context, decisions-only, maturity separated
+      6. Get user approval
+      7. Reflect into CLAUDE.md (링크 + 규칙만)
+      8. Proceed to implementation
 ```
 
 ## Common Mistakes
@@ -217,6 +233,7 @@ Before proceeding to implementation, review the checklist below. If the design h
 - Adding error handling to the design (AI handles this during implementation)
 - 유저가 지정하지 않은 다른 문서를 참조해서 스코프를 판단하기
 - CLAUDE.md에 설계 내용(아키텍처, 상태 머신)을 복제하기
+- 복수 문서 업데이트 시 결정-문서 매핑 없이 바로 작성하여 스코프에 해당하는 결정을 누락하기
 
 ## Additional Resources
 
