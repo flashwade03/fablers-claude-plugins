@@ -77,13 +77,13 @@ Detection: look for specific library names, framework APIs, or file path pattern
 
 ### Axis 6: CLAUDE.md Alignment
 
-> CLAUDE.md가 설계 문서에 링크하고, 설계 내용을 복제하지 않는가?
+> CLAUDE.md가 설계 문서에 링크하고, 설계 내용을 복제하지 않으며, 참조 테이블의 스코프 설명이 실제 문서 내용과 일치하는가?
 
-**PASS**: CLAUDE.md가 설계 문서를 링크(참조 시점 포함)하고, 기술 스택/규칙만 팩트로 포함. 설계 내용(아키텍처, 상태 머신, 도구 목록)은 설계 문서에만 있음.
-**WARN**: 설계 문서 링크가 없거나, 일부 설계 내용이 CLAUDE.md에 중복.
+**PASS**: CLAUDE.md가 설계 문서를 링크(참조 시점 포함)하고, 기술 스택/규칙만 팩트로 포함. 설계 내용(아키텍처, 상태 머신, 도구 목록)은 설계 문서에만 있음. 참조 테이블의 "참조 시점" 설명이 실제 설계 문서의 주요 섹션/스코프와 일치.
+**WARN**: 설계 문서 링크가 없거나, 일부 설계 내용이 CLAUDE.md에 중복. 또는 참조 테이블의 스코프 설명이 실제 설계 문서 내용과 불일치(설계 문서에 추가된 스코프가 참조 시점에 반영되지 않음).
 **FAIL**: CLAUDE.md에 아키텍처 다이어그램, 상태 머신, 도구 목록 등 설계 내용이 복제되어 있음.
 
-Detection: CLAUDE.md에 설계 문서 링크 테이블이 있는지 확인. 아키텍처 설명, 상태 전이, 도구 목록이 CLAUDE.md에 직접 기술되어 있으면 FAIL. Skip this axis if the design is a draft not yet approved (state this explicitly in output).
+Detection: CLAUDE.md에 설계 문서 링크 테이블이 있는지 확인. 아키텍처 설명, 상태 전이, 도구 목록이 CLAUDE.md에 직접 기술되어 있으면 FAIL. 참조 테이블이 있으면 각 설계 문서의 주요 섹션 제목과 참조 시점 설명을 대조하여 누락된 스코프가 없는지 확인. Skip this axis if the design is a draft not yet approved (state this explicitly in output).
 
 ---
 
