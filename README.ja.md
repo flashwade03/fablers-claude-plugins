@@ -114,7 +114,7 @@ Grade: A | Score: 83
 /plugin marketplace add flashwade03/fablers-claude-harness
 
 # プラグインをインストール
-/plugin install fablers-claude-harness@fablers-claude-harness
+/plugin install fablers-claude-harness@fablers
 ```
 
 ローカル開発の場合：

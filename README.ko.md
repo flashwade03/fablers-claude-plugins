@@ -114,7 +114,7 @@ Grade: A | Score: 83
 /plugin marketplace add flashwade03/fablers-claude-harness
 
 # 플러그인 설치
-/plugin install fablers-claude-harness@fablers-claude-harness
+/plugin install fablers-claude-harness@fablers
 ```
 
 로컬 개발 시:

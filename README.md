@@ -114,7 +114,7 @@ Low-complexity patterns get redirected to CLAUDE.md rules instead of full skills
 /plugin marketplace add flashwade03/fablers-claude-harness
 
 # Install the plugin
-/plugin install fablers-claude-harness@fablers-claude-harness
+/plugin install fablers-claude-harness@fablers
 ```
 
 For local development:
