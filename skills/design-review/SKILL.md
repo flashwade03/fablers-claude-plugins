@@ -1,6 +1,6 @@
 ---
 name: design-review
-description: This skill should be used when the user explicitly asks to "review my design", "score this design", "evaluate my design", "rate this design", "design quality check", "설계 리뷰해줘", "설계 평가해줘", "이 설계 괜찮아?", "설계 점수 매겨줘". Accepts a file path argument as the review target (e.g., "/design-review docs/features/file.md"). If no argument is provided, ask the user which document to review before proceeding. Scores design documents against 6 vibe coding axes (decision purity, rationale, decision maturity, context budget, constraint quality, CLAUDE.md alignment) and outputs Grade (S~F), Score (0-100), and detailed feedback.
+description: This skill should be used when the user asks to "review my design", "score this design", "evaluate my design", "rate this design", "grade my design", "design quality check", "design audit", "check this design document", "설계 리뷰해줘", "설계 평가해줘", "이 설계 괜찮아?", "설계 점수 매겨줘", "설계 검토해줘", "디자인 리뷰해줘". Scores design documents against 6 vibe coding axes (decision purity, rationale, decision maturity, context budget, constraint quality, CLAUDE.md alignment) and outputs Grade (S~F), Score (0-100), and detailed feedback.
 ---
 
 # Design Review
@@ -149,25 +149,25 @@ Use this exact format:
 
 For a complete example of review output, see `examples/sample-review.md`.
 
-## Step 4: Cross-Document Check (복수 문서 리뷰 시)
+## Step 4: Cross-Document Check
 
-대상 문서가 2개 이상일 때, 개별 문서 리뷰 후 크로스 체크를 수행한다. 대상 문서가 1개이면 이 단계를 건너뛴다.
+When reviewing 2+ documents, perform a cross-document check after individual reviews. Skip this step for single-document reviews.
 
-1. 모든 대상 문서에서 결정 항목을 수집한다.
-2. 각 결정에 대해: **"이 결정이 다른 대상 문서의 스코프(제목, 첫 문장)에도 해당하는데 빠져있지 않은가?"** 확인한다.
-3. 누락 의심 항목이 있으면 아래 테이블로 출력한다. 없으면 "누락 의심 항목 없음"으로 표기.
+1. Collect all decision items from every target document.
+2. For each decision, ask: **"Does this decision belong in another target document's scope (title, first sentence) but is missing there?"**
+3. If suspected omissions exist, output the table below. If none, state "No suspected omissions."
 
-출력 형식 (개별 문서 리뷰 결과 뒤에 추가):
+Output format (appended after individual review results):
 
 ```
 ### Cross-Document Check
 
-| 결정 | 발견된 문서 | 누락 의심 문서 | 사유 |
-|------|-----------|-------------|------|
-| [결정 내용] | [있는 문서] | [없는 문서] | [해당 문서 스코프와의 매칭 근거] |
+| Decision | Found in | Suspected missing from | Reason |
+|----------|----------|----------------------|--------|
+| [decision] | [document where it exists] | [document where it's missing] | [scope-matching rationale] |
 ```
 
-주의: 동일한 결정이 여러 문서에 각각의 추상화 수준으로 존재하는 것은 중복이 아니다. 누락만 잡을 것.
+Note: The same decision appearing in multiple documents at different abstraction levels is NOT duplication. Only flag omissions.
 
 ## Edge Cases
 

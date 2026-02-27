@@ -6,7 +6,7 @@ This example demonstrates a review of a hypothetical chat application design doc
 
 ## Design Review
 
-**Grade: C** | **Score: 58**
+**Grade: C** | **Score: 67**
 
 채팅 기능 설계에 핵심 결정은 잘 잡혀있으나, 의사코드 포함과 v0에 불필요한 오프라인 동기화 설계가 문제.
 

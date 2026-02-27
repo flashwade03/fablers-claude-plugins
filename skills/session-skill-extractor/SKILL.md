@@ -86,6 +86,7 @@ Do NOT proceed to creation without explicit user approval.
 For each approved skill:
 
 1. Create the directory: `skills/[skill-name]/`
+   - Use **kebab-case**, 2-4 words describing the core action (e.g., `design-review`, `api-migration-planner`)
 2. Add subdirectories as needed: `references/`, `scripts/`, `examples/`
 3. Write `SKILL.md` following these rules:
    - **Frontmatter**: Third-person description with specific trigger phrases
@@ -102,7 +103,7 @@ Read `references/transformation-guide.md` for the detailed transformation princi
 3. **암묵적 판단을 명시적 기준으로**: "복잡하니까 설계부터" → "다음 조건 해당 시 설계 먼저"
 4. **사용자 결정 vs AI 결정 구분**: 사용자 결정 → "사용자에게 물어볼 것", AI 결정 → 워크플로우 스텝
 
-변환 후 검증 질문 3가지:
+변환 후 검증 질문 3가지 (full context in `references/transformation-guide.md` Phase 3):
 - "이 세션의 프로젝트를 모르는 사람이 읽어도 이해되는가?"
 - "이 스텝을 빼면 워크플로우가 깨지는가?"
 - "이 내용은 다른 프로젝트에서도 유효한가?"
@@ -110,6 +111,7 @@ Read `references/transformation-guide.md` for the detailed transformation princi
 ### Quality Checks Before Finalizing
 
 - [ ] SKILL.md frontmatter has third-person description with trigger phrases
+- [ ] Description is under 500 characters including trigger phrases
 - [ ] Body uses imperative form (not second person)
 - [ ] Body is under 3,000 words (ideally 1,500-2,000)
 - [ ] All referenced files exist

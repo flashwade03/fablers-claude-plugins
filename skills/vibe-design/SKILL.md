@@ -1,6 +1,6 @@
 ---
 name: vibe-design
-description: This skill should be used when the user explicitly asks to "design a feature", "create architecture", "plan a system", "how much design do I need?", "should I write a spec?", "is this over-engineered?", "설계해줘", "아키텍처 잡아줘", "설계 범위 정해줘", "기획 문서 써야 할까?". This skill must be explicitly invoked — do NOT trigger automatically before plan mode or implementation. Guides design scope to produce exactly the right amount of specification, preventing over-specification that kills vibe coding productivity.
+description: This skill should be used when the user asks to "design a feature", "create architecture", "plan a system", "write a design doc", "how much design do I need?", "should I write a spec?", "is this over-engineered?", "설계해줘", "아키텍처 잡아줘", "설계 범위 정해줘", "기획 문서 써야 할까?", "설계 문서 만들어줘". Guides design scope to produce exactly the right amount of specification for vibe coding, preventing both over-specification and under-specification.
 ---
 
 # Vibe Design
@@ -8,6 +8,8 @@ description: This skill should be used when the user explicitly asks to "design 
 ## Purpose
 
 Guide the design process to produce exactly the right amount of specification for vibe coding. Design = Decisions + Constraints + Milestones. Never pseudocode, function signatures, or exhaustive error paths.
+
+**Activation policy**: This skill must be explicitly invoked — do NOT trigger automatically before plan mode or implementation.
 
 Over-specification is as harmful as under-specification. Pseudocode in design documents creates consistency problems that require endless review cycles. AI can generate implementation from decisions — specifying implementation details constrains AI and introduces bugs that wouldn't exist otherwise.
 
@@ -280,3 +282,7 @@ Before proceeding to implementation, review the checklist below. If the design h
 - **`references/principles.md`** — Detailed explanation of the 5 design principles (including Decision Maturity) with extended examples and rationale
 - **`references/anti-patterns.md`** — Over-specification failure modes derived from real 16-round design review experience
 - **`references/domain-web-service.md`** — Decision checklist for web service projects
+
+### Examples
+
+- **`examples/sample-design-output.md`** — Complete design document example following all 5 principles, for output calibration
