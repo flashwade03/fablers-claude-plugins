@@ -1,37 +1,46 @@
 ---
 name: session-skill-extractor
-description: This skill should be used when the user asks to "대화에서 스킬 추출해줘", "이 세션에서 스킬 만들 게 있어?", "대화 분석해서 스킬 만들어줘", "session to skill", "extract skill from conversation", "turn this conversation into skills", "what skills can we extract from this session", "이 대화에서 패턴 찾아줘", "스킬로 만들 만한 거 있어?", "세션 리뷰해서 스킬 뽑아줘". Analyzes the current session conversation to identify repeatable workflows, domain knowledge, or multi-step procedures worth turning into reusable skills, then creates them in this plugin.
+description: This skill should be used when the user asks to "대화에서 스킬 추출해줘", "이 세션에서 스킬 만들 게 있어?", "대화 분석해서 스킬 만들어줘", "session to skill", "extract skill from conversation", "turn this conversation into skills", "what skills can we extract from this session", "이 대화에서 패턴 찾아줘", "스킬로 만들 만한 거 있어?", "세션 리뷰해서 스킬 뽑아줘", "세션 회고", "대화 분석해줘", "이 세션에서 배운 거 정리해줘". Analyzes the current session conversation to identify repeatable workflows, corrections, rules, and domain knowledge, then routes each finding to the appropriate destination (skill, CLAUDE.md, hookify, or memory).
 ---
 
 # Session Skill Extractor
 
 ## Purpose
 
-Analyze the current session's conversation to discover patterns, workflows, and domain knowledge worth preserving as reusable skills. Turn implicit session knowledge into explicit, structured skills that can be reused across future sessions.
+Analyze the current session's conversation to discover patterns, corrections, rules, and domain knowledge worth preserving. Route each finding to the appropriate destination — not everything is a skill. Some findings are better as CLAUDE.md rules, hookify rules, or memory entries.
 
 ## When NOT to Use
 
 - Session has fewer than ~10 back-and-forth exchanges — not enough signal
-- Conversation was purely Q&A with no multi-step workflow or domain procedures
-- The identified pattern already exists as a skill in this plugin
+- Conversation was purely Q&A with no multi-step workflow, corrections, or domain knowledge transfer
+- The identified pattern already exists as a skill, CLAUDE.md rule, or hookify rule in this plugin
 
-## Step 0: Load Existing Skills
+## Step 0: Load Existing Context
 
-Before analysis, scan existing skills to establish a baseline and avoid duplicates.
+Before analysis, scan existing outputs to establish a baseline and avoid duplicates.
 
 1. Read all `skills/*/SKILL.md` files in this plugin
-2. Note each skill's name, description, and core workflow
-3. Keep this list as a deduplication reference throughout the process
+2. Read project CLAUDE.md files for existing rules
+3. Check memory files for existing knowledge
+4. Keep this inventory as a deduplication reference throughout the process
 
 ## Step 1: Conversation Analysis
 
-Scan the current session conversation and extract candidate patterns. Read `references/analysis-criteria.md` for the detailed signal categories and detection heuristics to apply.
+Scan the current session conversation and classify findings using the 5 characteristic types. Read `references/analysis-criteria.md` for the detailed detection heuristics and decision tree.
 
-For each candidate found, record:
-- **Pattern name**: Short descriptive label
-- **Signal type**: Which category from analysis criteria
-- **Evidence**: Specific conversation moments that demonstrate the pattern
-- **Reuse potential**: How likely this pattern recurs in future sessions
+### The 5 Characteristic Types
+
+| Type | What to look for | Primary routing |
+|------|-----------------|-----------------|
+| **1. 유저 교정** | Claude가 틀려서 유저가 바로잡은 순간 | hookify / CLAUDE.md |
+| **2. 반복 워크플로우** | 같은 절차가 2회 이상 실행 | skill |
+| **3. 명시적 규칙 선언** | 유저가 "항상/절대" 류 규칙 선언 | CLAUDE.md |
+| **4. 시행착오 해결** | Claude가 자체적으로 실패→성공 | skill Constraints / CLAUDE.md |
+| **5. 도메인 지식 전달** | 코드로 알 수 없는 맥락 설명 | CLAUDE.md / memory |
+
+### 판별 순서
+
+유형 간 겹침을 방지하기 위해, `references/analysis-criteria.md`의 Decision Tree를 따른다.
 
 ### Analysis Scope
 
@@ -40,144 +49,156 @@ Analyze the ENTIRE conversation from the beginning, not just recent messages. Pa
 ### What to Ignore
 
 - One-off debugging or troubleshooting that won't recur
-- Simple tool usage (file reads, edits) without a higher-level workflow
-- Patterns already covered by existing skills (from Step 0)
-- Generic programming tasks without domain specificity
+- Simple tool usage (file reads, edits) without a higher-level pattern
+- Patterns already covered by existing outputs (from Step 0)
+- Generic programming knowledge Claude already possesses
 
-## Step 2: Score and Filter Candidates
+For each finding, record:
+- **Pattern name**: Short descriptive label
+- **Characteristic type**: Which of the 5 types
+- **Evidence**: Specific conversation moments that demonstrate the pattern
+- **Routing destination**: skill / CLAUDE.md / hookify / memory
 
-For each candidate, evaluate against three criteria:
+## Step 2: Score and Prioritize
+
+For each finding, evaluate against three criteria (see scoring matrix in `references/analysis-criteria.md`):
 
 | Criterion | Question | Weight |
 |-----------|----------|--------|
 | Reusability | Will this pattern appear in future sessions? | High |
-| Complexity | Does it have 3+ steps or non-obvious domain knowledge? | Medium |
-| Distinctness | Is it sufficiently different from existing skills? | High |
+| Impact | If ignored, does it cause real problems? | High |
+| Clarity | Can it be expressed as a clear rule/procedure? | Medium |
 
-**Include** candidates that score High on Reusability AND Distinctness.
-**Exclude** candidates that score Low on any criterion.
-**Redirect**: For candidates with Low Complexity but High Reusability, propose a CLAUDE.md rule instead of a skill (see scoring matrix in `references/analysis-criteria.md`).
+**Include** findings that score High on Reusability OR Impact.
+**Exclude** findings that score Low on both Reusability AND Impact.
+**Defer** findings with Low Clarity — ask user for clarification.
 
-## Step 3: Present Proposals
+## Step 3: Present Findings
 
-For each qualifying candidate, present to the user:
+Group findings by routing destination and present to the user:
 
 ```
-### Skill Proposal: [Pattern Name]
+## Session Analysis Results
 
-**What it does**: [1-2 sentence description]
-**Why it's worth a skill**: [Reuse justification]
-**Estimated contents**:
-- SKILL.md: [Core workflow summary]
-- references/: [What reference material, if any]
-- scripts/: [What scripts, if any]
+### Skills (반복 워크플로우)
 
-**Evidence from this session**:
-- [Specific moment 1]
-- [Specific moment 2]
+#### 1. [Pattern Name]
+- **What it does**: [1-2 sentence description]
+- **Evidence**: [Specific conversation moments]
+- **Estimated contents**: SKILL.md + [resources]
+
+### CLAUDE.md Rules (규칙/사실)
+
+#### 2. [Rule Name]
+- **Rule**: [한 문장 규칙]
+- **Evidence**: [What triggered this]
+- **Suggested location**: [root/subdir/global]
+
+### Hookify Rules (실수 방지)
+
+#### 3. [Rule Name]
+- **Prevent**: [방지할 행동]
+- **Evidence**: [When this happened]
+
+### Memory (프로젝트 지식)
+
+#### 4. [Knowledge Name]
+- **Fact**: [기록할 사실]
+- **Evidence**: [How this was discovered]
 ```
 
-After presenting all proposals, ask: **"어떤 스킬을 만들까요? 번호로 선택하거나, 수정 사항을 알려주세요."**
+After presenting all findings, ask: **"어떤 것들을 적용할까요? 번호로 선택하거나, 수정 사항을 알려주세요."**
 
 Do NOT proceed to creation without explicit user approval.
 
-## Step 4: Create Approved Skills
+## Step 4: Create Approved Outputs
 
-For each approved skill:
+Read `references/transformation-guide.md` for detailed transformation principles per output type.
 
-1. Create the directory: `skills/[skill-name]/`
-   - Use **kebab-case**, 2-4 words describing the core action (e.g., `design-review`, `api-migration-planner`)
-2. Add subdirectories as needed: `references/`, `scripts/`, `examples/`
-3. Write `SKILL.md` following these rules:
-   - **Frontmatter**: Third-person description with specific trigger phrases
-   - **Body**: Imperative form, 1,500-2,000 words target
-   - **Progressive disclosure**: Core workflow in SKILL.md, details in references/
-4. Create referenced resource files
+### For Skills
 
-### Skill Content Transformation
+1. Create directory: `skills/[skill-name]/`
+2. Write `SKILL.md` with third-person description and imperative body
+3. Add `references/`, `scripts/`, `examples/` as needed
+4. Apply transformation principles: extract final path only, raise abstraction level, make implicit judgments explicit
 
-Read `references/transformation-guide.md` for the detailed transformation principles and process. Key principles:
+### For CLAUDE.md Rules
 
-1. **최종 경로만 추출**: 시행착오는 워크플로우가 아니라 Constraints("하지 말 것")로 변환
-2. **추상화 수준을 올림**: 세션 특정 파일명/변수명을 일반화 (단, 도구/명령이 핵심이면 구체적 유지)
-3. **암묵적 판단을 명시적 기준으로**: "복잡하니까 설계부터" → "다음 조건 해당 시 설계 먼저"
-4. **사용자 결정 vs AI 결정 구분**: 사용자 결정 → "사용자에게 물어볼 것", AI 결정 → 워크플로우 스텝
+1. Determine appropriate location (root/subdir/global)
+2. Format as concise imperative rules
+3. Add to existing CLAUDE.md under appropriate section, or create section if needed
 
-변환 후 검증 질문 3가지 (full context in `references/transformation-guide.md` Phase 3):
-- "이 세션의 프로젝트를 모르는 사람이 읽어도 이해되는가?"
-- "이 스텝을 빼면 워크플로우가 깨지는가?"
-- "이 내용은 다른 프로젝트에서도 유효한가?"
+### For Hookify Rules
+
+1. Define the behavior to prevent
+2. Suggest hookify rule configuration
+3. Note: propose the rule; user applies via hookify
+
+### For Memory Entries
+
+1. Check existing memory files for duplicates
+2. Add to appropriate topic file or create new one
+3. Keep factual and concise
 
 ### Quality Checks Before Finalizing
 
-- [ ] SKILL.md frontmatter has third-person description with trigger phrases
-- [ ] Description is under 500 characters including trigger phrases
-- [ ] Body uses imperative form (not second person)
-- [ ] Body is under 3,000 words (ideally 1,500-2,000)
-- [ ] All referenced files exist
-- [ ] No duplication with existing skills (Step 0 check)
-- [ ] Skill captures the essence of the pattern, not session-specific details
+- [ ] 각 출력이 적절한 목적지에 배치되었는가
 - [ ] 세션 특정 디테일(파일명, 변수명)이 일반화되었는가
 - [ ] 시행착오가 Constraints로 변환되었는가 (워크플로우에 실패 경로 없음)
+- [ ] CLAUDE.md 규칙이 한 문장 명령형인가
+- [ ] hookify 규칙이 "되돌리기 어려운 피해"를 방지하는 것인가
+- [ ] memory 항목이 검증된 사실인가
 
-## Step 5: Verify and Iterate
-
-스킬 생성 후 바로 검증한다. 만들고 끝이 아니라, 작동 확인까지가 이 스킬의 범위이다.
+## Step 5: Verify
 
 ### 5-1. 구조 검증
 
 자동으로 수행:
-- [ ] `skills/[name]/SKILL.md` 파일 존재 확인
+- [ ] 생성된 skill의 `SKILL.md` 파일 존재 확인
 - [ ] Frontmatter에 `name`, `description` 필드 존재
-- [ ] `description`이 "This skill should be used when" 패턴
-- [ ] 본문에서 참조하는 모든 파일(`references/`, `scripts/`)이 실제 존재
+- [ ] 본문에서 참조하는 모든 파일이 실제 존재
+- [ ] CLAUDE.md 규칙이 올바른 위치에 추가되었는가
+- [ ] memory 항목이 중복 없이 추가되었는가
 
-문제 발견 시 즉시 수정하고 사용자에게 수정 사항을 보고.
+문제 발견 시 즉시 수정하고 사용자에게 보고.
 
-### 5-2. 트리거 테스트 제안
-
-사용자에게 트리거 테스트를 제안한다:
-
-```
-## 트리거 테스트
-
-생성된 스킬이 의도대로 트리거되는지 확인하려면, 새 세션에서 다음 문구를 시도해 보세요:
-
-| 스킬 | 테스트 문구 |
-|------|-----------|
-| [name] | "[description에서 추출한 트리거 문구 1]" |
-| [name] | "[트리거 문구 2]" |
-```
-
-### 5-3. 결과 요약
+### 5-2. 결과 요약
 
 ```
-## Created Skills
+## Session Analysis Complete
 
-| Skill | Path | Description |
-|-------|------|-------------|
-| [name] | skills/[name]/ | [1-line summary] |
+| # | Type | Name | Destination | Status |
+|---|------|------|-------------|--------|
+| 1 | skill | [name] | skills/[name]/ | Created |
+| 2 | rule | [name] | CLAUDE.md | Added |
+| 3 | hookify | [name] | hookify rule | Proposed |
+| 4 | memory | [name] | memory/[file] | Added |
 
 구조 검증: [PASS/수정 사항 목록]
 ```
 
-### 5-4. 이후 개선
+### 5-3. 트리거 테스트 제안 (스킬만 해당)
 
-스킬을 실제로 사용한 후 개선이 필요하면, 다음 세션에서 이 스킬을 다시 호출하거나 직접 SKILL.md를 수정한다. 일반적인 개선 사항:
-- 트리거 문구 추가 (실제 사용자가 쓴 표현이 description에 없을 때)
-- 워크플로우 스텝 순서 조정
-- 누락된 Constraints 추가 (실제 사용 시 발견된 함정)
+스킬이 생성된 경우, 트리거 테스트 문구를 제안한다:
+
+```
+## 트리거 테스트
+
+| 스킬 | 테스트 문구 |
+|------|-----------|
+| [name] | "[트리거 문구]" |
+```
 
 ## Edge Cases
 
-- **No candidates found**: Report honestly. "이 세션에서 스킬로 만들 만한 반복 패턴을 찾지 못했습니다. [reason]." Do not force skill creation.
-- **Candidate overlaps with existing skill**: Propose updating the existing skill instead of creating a new one. Present both options to the user.
+- **No findings**: Report honestly. "이 세션에서 보존할 만한 패턴을 찾지 못했습니다. [reason]." Do not force creation.
+- **Finding overlaps with existing output**: Propose updating the existing output instead of creating a new one. Present both options to the user.
+- **Ambiguous routing**: When a finding could go to multiple destinations, present both options with trade-offs and let the user decide.
 - **Very large conversation**: Focus on the most recent coherent workflow if the conversation spans multiple unrelated topics.
-- **User wants to modify a proposal**: Incorporate feedback and re-present before creating.
 
 ## Additional Resources
 
 ### Reference Files
 
-- **`references/analysis-criteria.md`** — Detailed signal categories and detection heuristics for identifying skill-worthy patterns in conversations
-- **`references/transformation-guide.md`** — Conversation-to-skill transformation principles, process, and common pitfalls
+- **`references/analysis-criteria.md`** — 5가지 특징 유형의 상세 감지 기준, 판별 순서 Decision Tree, 점수 매트릭스
+- **`references/transformation-guide.md`** — 목적지별(skill, CLAUDE.md, hookify, memory) 변환 원칙과 형식

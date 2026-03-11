@@ -1,132 +1,185 @@
-# Conversation Analysis Criteria
+# Session Analysis Criteria
 
-## Signal Categories
+## 판별 순서 (Decision Tree)
 
-When scanning a conversation for skill-worthy patterns, look for these six signal types. Each represents a different kind of reusable knowledge.
+각 발견에 대해 유형 간 겹침을 방지하기 위해, 다음 순서로 판별한다:
 
-### 1. Repeated Multi-Step Workflow
+```
+유저가 개입했는가?
+├── Yes → 유저가 틀린 것을 바로잡았는가?
+│   ├── Yes → 1. 유저 교정 (Correction)
+│   └── No → 유저가 규칙/선호를 선언했는가?
+│       ├── Yes → 3. 명시적 규칙 선언 (Explicit Rule)
+│       └── No → 5. 도메인 지식 전달 (Domain Knowledge Transfer)
+└── No → 같은 패턴이 반복되었는가?
+    ├── Yes → 2. 반복 워크플로우 (Repeated Workflow)
+    └── No → 4. 시행착오 해결 (Trial-Error Resolution)
+```
 
-**What it is**: A sequence of 3+ actions that were performed in a specific order to achieve a goal, especially if the sequence was repeated or refined during the session.
+---
 
-**Detection heuristics**:
-- Same sequence of tool calls appeared more than once
-- User described a process with numbered steps
-- Claude followed a consistent procedure across multiple items (e.g., reviewing several files the same way)
+## Characteristic Types
 
-**Example signals**:
-- "First read the config, then validate against schema, then update the test file"
-- Same pattern of read → analyze → edit applied to multiple files
-- A debugging workflow: reproduce → isolate → fix → verify
+세션에서 발견할 5가지 특징 유형. 각 유형은 보존할 가치가 있는 다른 종류의 지식을 나타낸다.
 
-**Skill potential**: High — workflows are the most natural fit for skills.
+### 1. 유저 교정 (Correction)
 
-### 2. Domain-Specific Decision Framework
-
-**What it is**: A set of criteria or rules used to make decisions in a specific domain. The criteria are non-obvious and required discovery or user explanation.
-
-**Detection heuristics**:
-- User explained business rules ("우리는 항상 X 방식으로 한다")
-- Multiple conditional branches based on domain knowledge
-- Claude needed correction because it didn't know a domain convention
-
-**Example signals**:
-- "If the API returns 429, we back off exponentially but cap at 30s"
-- "Our naming convention for migrations is YYYYMMDD_description"
-- "Design documents should never contain implementation details"
-
-**Skill potential**: High — domain knowledge is exactly what AI models lack.
-
-### 3. Quality Gate / Review Checklist
-
-**What it is**: A set of checks applied to validate output quality. Emerged naturally from the conversation as things to verify.
+**What it is**: Claude가 틀리거나 오해한 것을 유저가 바로잡은 순간. 사실 오류, 접근 방식 거부, 기능 오해 등을 포함한다.
 
 **Detection heuristics**:
-- User asked "did you check X?" after Claude's output
-- Claude performed a validation step that caught issues
-- A list of criteria was established through iteration
+- "그게 아니라", "아니야", "that's not right" 류의 부정 표현
+- 유저가 공식문서/링크를 근거로 제시
+- 유저가 Claude의 tool call이나 접근을 거부 후 대안 지시
+- Claude의 방향이 유저 피드백 후 크게 전환됨
 
 **Example signals**:
-- "Before committing, always run lint and check for unused imports"
-- "Every design document needs a Goal section and Constraints section"
-- A scoring rubric that was applied to evaluate something
+- "agent-team은 그런 기능이 아니야, 공식문서 봐" → 기능 오해 교정
+- "그 API는 deprecated됐어, v2를 써" → 사실 오류 교정
+- "파일 삭제하지 마, 먼저 확인부터" → 행동 교정
 
-**Skill potential**: Medium-High — great for review/validation skills.
+**Routing criteria**:
 
-### 4. Tool Configuration Pattern
+| 교정의 성격 | 라우팅 | 예시 |
+|------------|--------|------|
+| 도구/기능에 대한 사실 오류 | CLAUDE.md | "agent-team은 공식 기능이다" |
+| Claude가 반복할 가능성 높은 행동 오류 | hookify | "파일 삭제 전 항상 확인" |
+| 교정 과정에서 드러난 도메인 지식 | memory | "이 프로젝트의 배포 프로세스는..." |
 
-**What it is**: A specific way of using tools (CLI commands, API calls, file operations) that required non-trivial setup or configuration.
+**경계**: 시행착오(4번)와 구분 — 교정은 **유저가 개입**해서 방향을 바꾼 것. 유저 개입 없이 Claude가 스스로 실패→성공한 경우는 시행착오로 분류.
+
+---
+
+### 2. 반복 워크플로우 (Repeated Workflow)
+
+**What it is**: 같은 절차가 세션 내에서 2회 이상 실행된 패턴. 특히 여러 파일/항목에 동일한 순서로 적용된 경우.
 
 **Detection heuristics**:
-- Complex command-line invocations with specific flags
-- Tool chains where output of one feeds into another
-- Configuration that took multiple tries to get right
+- 동일한 도구 호출 시퀀스가 2회 이상 등장
+- 같은 패턴(read → analyze → edit)이 여러 파일/항목에 적용
+- 유저가 번호 매긴 절차를 설명하거나 Claude가 일관된 절차를 따름
 
 **Example signals**:
-- Specific ffmpeg command for a media processing task
-- A curl + jq pipeline for API data extraction
-- Build configuration that resolved a tricky dependency issue
+- 여러 컴포넌트에 대해 동일한 리팩토링 패턴 적용
+- "먼저 스키마 확인 → 마이그레이션 작성 → 테스트 실행" 반복
+- 동일한 디버깅 워크플로우(재현 → 격리 → 수정 → 검증) 반복
 
-**Skill potential**: Medium — good candidate for scripts/ in a skill.
+**Routing criteria**:
 
-### 5. Iterative Refinement Pattern
+| 조건 | 라우팅 |
+|------|--------|
+| 3+ 스텝 + 판단 분기 존재 | skill |
+| 3+ 스텝 + 판단 없이 기계적 | script (skill의 scripts/) |
+| 2 스텝 이하, 단순 반복 | CLAUDE.md |
 
-**What it is**: A pattern where an initial approach was refined through multiple iterations, and the final approach represents learned knowledge about what works.
+**경계**: 유저 교정(1번)과 구분 — 반복 워크플로우는 유저 개입 없이 Claude가 자체적으로 반복 실행한 패턴.
+
+---
+
+### 3. 명시적 규칙 선언 (Explicit Rule)
+
+**What it is**: 유저가 "항상/절대" 류의 규칙이나 선호를 직접 선언한 순간. 교정과 달리, 기존 오류를 바로잡는 것이 아니라 새로운 규칙을 세움.
 
 **Detection heuristics**:
-- Multiple revisions of the same artifact
-- User corrections that revealed non-obvious requirements
-- Claude's approach changed significantly after feedback
+- "항상", "절대", "무조건", "always", "never" 키워드
+- 네이밍 컨벤션 선언 ("커밋 메시지는 한국어로", "변수명은 camelCase")
+- 선호 표현 ("나는 X 방식이 좋아", "bun을 써", "영어로 작성해")
+- 지속성 표현 ("이거 기억해", "앞으로는 이렇게 해")
 
 **Example signals**:
-- First design was over-specified → refined to decisions-only
-- Initial regex didn't handle edge cases → final version covers them all
-- Prompt template went through 3 iterations before user approved
+- "커밋 메시지는 항상 한국어로 작성해"
+- "테스트 없이 절대 푸시하지 마"
+- "bun을 써, npm 말고"
+- "앞으로 새 컴포넌트는 항상 테스트 파일도 같이 만들어"
 
-**Skill potential**: Medium — the final approach is valuable, but the iteration itself may be too session-specific.
+**Routing criteria**:
 
-### 6. Cross-Cutting Convention
+| 조건 | 라우팅 |
+|------|--------|
+| 프로젝트 전반에 적용되는 규칙 | CLAUDE.md |
+| 조건부 규칙 ("X일 때만 Y 해라") — 복잡한 경우 | skill |
+| 개인 작업 선호 | memory |
 
-**What it is**: A convention or rule that applies across multiple files, components, or tasks. Often implicit until made explicit.
+**경계**: 교정(1번)과 구분 — 규칙 선언은 **새로운 규칙을 세움**. 교정은 **기존 오류를 바로잡음**. "항상 X 해"(규칙) vs "그거 틀렸어, Y야"(교정).
+
+---
+
+### 4. 시행착오 해결 (Trial-Error Resolution)
+
+**What it is**: Claude가 유저 개입 없이 접근 A를 시도 → 실패 → 접근 B로 전환 → 성공한 패턴. 실패-성공 쌍이 핵심.
 
 **Detection heuristics**:
-- Same principle applied to different files/components
-- User stated a rule that should "always" or "never" apply
-- A pattern was enforced consistently across the session
+- Claude가 접근 A 시도 → 에러 발생 → 접근 B로 전환 → 성공
+- 에러 메시지 발생 후 다른 접근으로 자체 변경
+- 같은 문제에 대해 여러 iteration (유저 개입 없이)
 
 **Example signals**:
-- "All error messages should be in Korean"
-- "Every new component needs a corresponding test file"
-- "We always use absolute imports, never relative"
+- fetch로 외부 API 호출 → CORS 에러 → 서버사이드로 전환 → 성공
+- 라이브러리 A로 구현 → 호환성 이슈 → 라이브러리 B로 교체 → 성공
+- 정규식 v1 → 엣지케이스 실패 → v2로 수정 → 통과
 
-**Skill potential**: Low-Medium — often better suited for CLAUDE.md rules than full skills. Promote to skill only if the convention requires a multi-step workflow to enforce.
+**Routing criteria**:
+
+| 조건 | 라우팅 |
+|------|--------|
+| 흔한 함정 (다른 프로젝트에서도 발생 가능) | skill의 Constraints |
+| 환경/설정 특화 이슈 | CLAUDE.md |
+| Claude가 반복할 가능성 높은 실수 | hookify |
+
+**경계**: 교정(1번)과 구분 — 시행착오는 **유저 개입 없이** Claude가 자체적으로 실패 후 성공 경로를 찾은 것.
+
+---
+
+### 5. 도메인 지식 전달 (Domain Knowledge Transfer)
+
+**What it is**: 유저가 코드만으로는 알 수 없는 비자명한 프로젝트/도메인 지식을 설명한 순간. 교정이나 규칙 선언이 아닌, 순수한 정보 전달.
+
+**Detection heuristics**:
+- 유저가 비즈니스 로직이나 내부 프로세스를 설명
+- 시스템 간 관계나 의존성 설명 ("이 서비스는 X에 의존해")
+- 코드만으로는 발견 불가능한 맥락 제공 ("이 테이블은 사실 X 용도로...")
+- 프로젝트 히스토리나 결정 배경 설명 ("이건 Y 때문에 이렇게 했어")
+
+**Example signals**:
+- "이 테이블의 status 필드는 사실 3가지 상태만 유효해"
+- "배포는 항상 staging → canary → production 순서로"
+- "이 모듈은 레거시라 조만간 교체 예정이야"
+- "A팀이 이 API를 쓰고 있어서 breaking change 하면 안 돼"
+
+**Routing criteria**:
+
+| 조건 | 라우팅 |
+|------|--------|
+| 프로젝트 특화 사실 | CLAUDE.md 또는 memory |
+| 재사용 가능한 도메인 절차 | skill의 references/ |
+| API/스키마 지식 | references/ 파일 |
+
+**경계**: 명시적 규칙(3번)과 구분 — 도메인 지식은 **사실/정보**. 규칙은 **행동 지침**.
+
+---
 
 ## Scoring Matrix
 
-For each candidate, assess:
+각 발견에 대해, 라우팅 후 해당 목적지 내에서의 우선순위를 평가한다:
 
 | Criterion | High | Medium | Low |
 |-----------|------|--------|-----|
-| **Reusability** | Will recur in most sessions | Will recur occasionally | One-off or rare |
-| **Complexity** | 5+ steps or deep domain knowledge | 3-4 steps or moderate domain knowledge | 1-2 steps, obvious logic |
-| **Distinctness** | No overlap with existing skills | Partial overlap but different focus | Mostly duplicates an existing skill |
+| **Reusability** | 대부분의 세션에서 재발 | 가끔 재발 | 일회성 |
+| **Impact** | 무시하면 큰 문제 발생 | 무시하면 비효율 | 무시해도 무방 |
+| **Clarity** | 명확한 규칙/절차로 정리 가능 | 약간의 해석 필요 | 모호하거나 맥락 의존 |
 
-### Decision Rules
+### 포함/제외 기준
 
-- **All High** → Strong candidate. Create the skill.
-- **High Reusability + High Distinctness + Medium Complexity** → Good candidate. Create the skill.
-- **Any Low** → Weak candidate. Skip unless user specifically requests it.
-- **Low Distinctness** → Propose updating the existing skill instead.
-- **Low Complexity + High Reusability** → Better as a CLAUDE.md rule than a skill. Suggest this to the user.
+- **포함**: Reusability High 또는 Impact High
+- **제외**: Reusability Low AND Impact Low
+- **보류**: Clarity Low — 유저에게 명확화 요청 후 재평가
 
-## Distinguishing Skills from CLAUDE.md Rules
+## 출력 형태별 특성
 
-Not every pattern deserves a full skill. Consider:
+라우팅 목적지별 적합한 발견의 특성:
 
-| Characteristic | CLAUDE.md Rule | Skill |
-|---------------|---------------|-------|
-| Length | 1-3 lines | Multi-step workflow |
-| Trigger | Always active | On-demand activation |
-| Content | Fact or constraint | Procedure with decisions |
-| Context cost | Minimal (always loaded) | Progressive (loaded when needed) |
-
-**Rule of thumb**: If the pattern can be expressed as a single imperative sentence ("Always do X when Y"), it's a CLAUDE.md rule. If it requires a workflow with decision points, it's a skill.
+| 목적지 | 적합한 발견 | 부적합한 발견 |
+|--------|-----------|-------------|
+| **skill** | 다단계 절차, 판단 분기 포함 | 한 줄로 표현 가능한 규칙 |
+| **CLAUDE.md** | 항상 적용되는 규칙/사실 | 가끔만 필요한 절차 |
+| **hookify** | Claude가 반복하는 실수 패턴 | 한 번만 발생한 오류 |
+| **memory** | 프로젝트 특화 사실, 개인 선호 | 일반적인 프로그래밍 지식 |
