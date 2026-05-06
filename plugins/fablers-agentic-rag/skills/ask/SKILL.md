@@ -18,11 +18,22 @@ The user's question is: **$ARGUMENTS**
 Read the settings file at `${CLAUDE_PROJECT_DIR}/.claude/fablers-agentic-rag.local.md` (or `.claude/fablers-agentic-rag.local.md` relative to the current project).
 
 Extract from the YAML frontmatter:
-- `rag_data_path` — absolute path to the data directory containing `chunks.json`, `embeddings.npz`, and `bm25_corpus.json`
-- `openai_api_key` — OpenAI API key for query embedding
+- `rag_data_path` — absolute path to the data directory. Layout:
+  - `{rag_data_path}/chunks.json` and `bm25_corpus.json` (provider-independent)
+  - `{rag_data_path}/embeddings/{provider}/embeddings.npz` and `index.meta.json`
+- `embedding_provider` — `gemini` (default) or `openai`. Falls back to `gemini` if missing.
+- The matching API key:
+  - If provider is `gemini`: `gemini_api_key`
+  - If provider is `openai`: `openai_api_key`
 
-If the file doesn't exist, or `rag_data_path` still shows the placeholder `/path/to/data`, or `openai_api_key` is `YOUR_OPENAI_API_KEY`, stop and ask the user to configure it:
-> "Please configure `rag_data_path` and `openai_api_key` in `.claude/fablers-agentic-rag.local.md`."
+`search.py` will pick the provider and key from this same settings file automatically — you do not need to pass `--api-key` or `--provider` if the settings file is configured.
+
+Validate before continuing:
+- If the settings file is missing, stop and ask the user to set it up.
+- If `rag_data_path` is the placeholder `/path/to/data`, stop and ask the user to set the real path.
+- If the API key for the selected provider is the placeholder (`YOUR_GEMINI_API_KEY` / `YOUR_OPENAI_API_KEY`), stop and ask the user to fill it in.
+
+> "Please configure `rag_data_path` and `{provider}_api_key` in `.claude/fablers-agentic-rag.local.md`."
 
 ### Step 1: Complexity Classification
 
@@ -58,17 +69,18 @@ SEARCH_QUERIES:
 
 ### Step 3: Hybrid Search (direct script execution — not an agent)
 
-Run the search script directly using Bash:
+Run the search script directly using Bash. The script reads `embedding_provider` and the matching API key from the settings file automatically:
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/search.py \
   --data-dir "<rag_data_path from Step 0>" \
   --queries <each query from Step 2, space-separated and quoted> \
-  --api-key "<openai_api_key from Step 0>" \
   --top-k 20
 ```
 
 Capture the `RETRIEVAL_RESULTS` JSON array from stdout.
+
+If `search.py` reports `Missing index files` and mentions a legacy `embeddings.npz` at the data root, the user is on a pre-v3.1 index. Tell them to re-run `/ingest` so the index is rebuilt under `embeddings/{provider}/`.
 
 ### Step 4: Evaluation (conditional)
 

@@ -8,7 +8,7 @@ A Claude Code plugin marketplace packaging battle-tested workflows into reusable
 Design methodology, document forging, and agentic RAG — all in one place.
 
 [![Claude Code Marketplace](https://img.shields.io/badge/Claude_Code-Marketplace-blueviolet?style=for-the-badge)](https://claude.ai)
-[![Version](https://img.shields.io/badge/version-0.10.0-blue?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/version-0.10.1-blue?style=for-the-badge)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
 [English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md)
@@ -56,7 +56,7 @@ Refines documents through an iterative review loop powered by multiple LLMs. Wri
 
 ### `fablers-agentic-rag` — Ask your documents. Get a cited answer.
 
-Agentic RAG pipeline — query analysis, hybrid retrieval (vector + BM25), CRAG validation, and cited answer synthesis — all orchestrated by Claude agents. Supports PDF, plain text, and Markdown.
+Agentic RAG pipeline — query analysis, hybrid retrieval (vector + BM25), CRAG validation, and cited answer synthesis — all orchestrated by Claude agents. Supports PDF, plain text, and Markdown. Pluggable embedding backend: **Gemini** (`gemini-embedding-2-preview`, default) or **OpenAI** (`text-embedding-3-small`).
 
 ```
 > /ingest <file>                   # Index a document

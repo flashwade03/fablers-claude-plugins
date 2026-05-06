@@ -16,9 +16,10 @@ Read the settings file at `${CLAUDE_PROJECT_DIR}/.claude/fablers-agentic-rag.loc
 
 Extract from the YAML frontmatter:
 - `rag_data_path` — absolute path to the data directory
-- `openai_api_key` — OpenAI API key for query embedding
+- `embedding_provider` — `gemini` (default) or `openai`
+- The matching API key: `gemini_api_key` or `openai_api_key`
 
-If the file doesn't exist or values are placeholders, stop and ask the user to configure it.
+If the file doesn't exist or required values are placeholders, stop and ask the user to configure it. `search.py` reads provider + key from the same file, so you do not need to pass `--api-key` or `--provider` on the CLI.
 
 ### 2. Execute Search
 
@@ -28,9 +29,10 @@ Run the search script directly:
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/search.py \
   --data-dir "<rag_data_path>" \
   --queries "$ARGUMENTS" \
-  --api-key "<openai_api_key>" \
   --top-k 10
 ```
+
+If `search.py` errors with "Missing index files" and mentions a legacy `embeddings.npz` at the data root, the index is pre-v3.1. Tell the user to re-run `/ingest` to rebuild under `embeddings/{provider}/`.
 
 ### 3. Return Results
 

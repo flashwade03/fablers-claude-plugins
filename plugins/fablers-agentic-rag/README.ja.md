@@ -7,7 +7,7 @@
 クエリ分析、ハイブリッド検索、評価とCRAG検証、引用付き回答合成まで — Claude エージェントがオーケストレーションするAgentic RAGパイプラインプラグイン。PDF、テキスト、Markdownに対応。
 
 [![Claude Code Plugin](https://img.shields.io/badge/Claude_Code-Plugin-blueviolet?style=for-the-badge)](https://claude.ai)
-[![Version](https://img.shields.io/badge/version-3.0.0-blue?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/version-3.1.0-blue?style=for-the-badge)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
 [English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md)
@@ -75,6 +75,25 @@ numpy配列 + インメモリBM25 — ベクトルDB不要、サーバー不要�
 ---
 
 ## 変更点
+
+### v3.1.0 — 埋め込みプロバイダー切り替え（Gemini デフォルト）
+
+OpenAI 埋め込みは必須ではなくなりました。`embedding_provider` 設定一つでプロバイダーを切り替えます：
+
+- **`gemini`**（新しいデフォルト） — `gemini-embedding-2-preview`（3072 dim）。インデックスは `RETRIEVAL_DOCUMENT`、クエリは `RETRIEVAL_QUERY` task type を使用。
+- **`openai`** — `text-embedding-3-small`（1536 dim）。既存の動作はそのまま。
+
+インデックスのレイアウトがプロバイダー別サブディレクトリに分離され、両方を共存可能：
+```
+{rag_data_path}/
+├── chunks.json              # 共有
+├── bm25_corpus.json         # 共有
+└── embeddings/
+    ├── gemini/{embeddings.npz, metadata.json, index.meta.json}
+    └── openai/{embeddings.npz, metadata.json, index.meta.json}
+```
+
+**v3.0.x からの移行**: データルートにある既存の `embeddings.npz` は読み込まれなくなりました。`/ingest` を再実行して新レイアウトでインデックスを再構築してください。レガシーファイルはそのまま残ります — 新しいインデックスが正常に動作することを確認してから削除してください。新レイアウトが見つからない場合、search.py が移行ヒントを出力します。
 
 ### v3.0.0 — コマンドリネーム（breaking）
 
@@ -145,10 +164,20 @@ Claude Codeでマーケットプレイスを追加してインストール：
 
 ### 2. データ準備
 
-依存関係をインストールしてインジェスションパイプラインを実行：
+依存関係をインストール。使用する埋め込みプロバイダー用の SDK のみインストールすればよい（どちらか一方でOK）：
 
 ```bash
-pip install openai numpy rank_bm25 pdfplumber
+# 常に必要
+pip install pdfplumber numpy rank_bm25
+
+# プロバイダー別（使用する側のみ）
+pip install google-genai   # embedding_provider: gemini  （デフォルト）
+pip install openai         # embedding_provider: openai
+```
+
+その後インジェスションパイプラインを実行：
+
+```bash
 cd scripts && python3 ingest.py --document /path/to/your/document.pdf --output-dir ../data
 ```
 
@@ -162,8 +191,12 @@ cd scripts && python3 ingest.py --document /path/to/your/document.pdf --output-d
 
 ```yaml
 rag_data_path: /absolute/path/to/data
-openai_api_key: sk-...
+embedding_provider: gemini       # または "openai"
+gemini_api_key: AIza...           # provider = gemini の場合に必須
+openai_api_key: sk-...            # provider = openai の場合に必須
 ```
+
+選択したプロバイダーの API キーのみ設定すれば OK です。両プロバイダーを比較したい場合は同じドキュメントを両方でインジェスト — 埋め込みはプロバイダー別に保存され、`chunks.json`/`bm25_corpus.json` は共有されます。
 
 ### 4. 質問する
 
@@ -186,7 +219,7 @@ openai_api_key: sk-...
 ```
 fablers-agentic-rag/                  ← プラグインルート
 ├── .claude-plugin/
-│   └── plugin.json                   # プラグインマニフェスト（v3.0.0）
+│   └── plugin.json                   # プラグインマニフェスト（v3.1.0）
 ├── agents/
 │   ├── query-analyst.md              # クエリ分解
 │   ├── evaluator.md                  # リランキング + CRAG検証
@@ -198,11 +231,11 @@ fablers-agentic-rag/                  ← プラグインルート
 ├── skills/
 │   └── ask/SKILL.md                  # パイプラインオーケストレーション
 ├── scripts/
-│   ├── search.py                     # ハイブリッド検索エンジン
-│   ├── ingest.py                     # ドキュメントインジェスションパイプライン
+│   ├── search.py                     # ハイブリッド検索（provider-aware）
+│   ├── ingest.py                     # インジェスション（provider-aware）
 │   ├── chunker.py                    # 自動検出チャンキング戦略
-│   ├── embedder.py                   # OpenAIエンベディング
-│   ├── config.py                     # チャンキング/エンベディング設定
+│   ├── embedder.py                   # プロバイダーディスパッチャ（openai + gemini）
+│   ├── config.py                     # プロバイダー/モデルレジストリ、パスヘルパー
 │   └── session-start.sh              # セッション初期化
 ├── hooks/
 │   └── hooks.json                    # イベントフック

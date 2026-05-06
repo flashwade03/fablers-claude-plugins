@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Fablers plugin collection — design methodology, document forging, agentic RAG, and a grimoire of reusable skills",
-    "version": "0.10.0"
+    "version": "0.10.1"
   },
   "plugins": [
     {
@@ -36,8 +36,8 @@
     {
       "name": "fablers-agentic-rag",
       "source": "./plugins/fablers-agentic-rag",
-      "description": "Agentic RAG pipeline using Claude agents for query analysis, hybrid retrieval, evaluation, and answer synthesis with CRAG validation.",
-      "version": "3.0.0",
+      "description": "Agentic RAG pipeline using Claude agents for query analysis, hybrid retrieval, evaluation, and answer synthesis with CRAG validation. Supports OpenAI and Gemini embeddings.",
+      "version": "3.1.0",
       "author": {
         "name": "flashwade03"
       },

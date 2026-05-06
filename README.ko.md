@@ -8,7 +8,7 @@
 설계 방법론, 문서 단조, 에이전틱 RAG — 한 곳에서.
 
 [![Claude Code Marketplace](https://img.shields.io/badge/Claude_Code-Marketplace-blueviolet?style=for-the-badge)](https://claude.ai)
-[![Version](https://img.shields.io/badge/version-0.10.0-blue?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/version-0.10.1-blue?style=for-the-badge)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
 [English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md)
@@ -56,7 +56,7 @@
 
 ### `fablers-agentic-rag` — 문서에 질문하세요. 인용된 답변을 받으세요.
 
-에이전틱 RAG 파이프라인 — 쿼리 분석, 하이브리드 검색 (벡터 + BM25), CRAG 검증, 인용 답변 합성 — 모두 Claude 에이전트가 오케스트레이션. PDF, 텍스트, 마크다운 지원.
+에이전틱 RAG 파이프라인 — 쿼리 분석, 하이브리드 검색 (벡터 + BM25), CRAG 검증, 인용 답변 합성 — 모두 Claude 에이전트가 오케스트레이션. PDF, 텍스트, 마크다운 지원. 임베딩 백엔드 선택 가능: **Gemini** (`gemini-embedding-2-preview`, 기본) 또는 **OpenAI** (`text-embedding-3-small`).
 
 ```
 > /ingest <파일>                   # 문서 인덱싱

@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
-"""Self-contained hybrid search script for the fablers-agentic-rag plugin.
+"""Hybrid search script for the fablers-agentic-rag plugin.
 
 Usage:
-    python3 search.py --data-dir /path/to/data --queries "query1" "query2" [--top-k 20] [--per-query-min 2]
+    python3 search.py --data-dir /path/to/data --queries "q1" "q2" \\
+        [--top-k 20] [--per-query-min 2] [--provider gemini|openai]
 
-Requires: openai, numpy, rank_bm25
+Provider-specific embeddings are loaded from:
+    {data_dir}/embeddings/{provider}/embeddings.npz
+
+chunks.json and bm25_corpus.json live at {data_dir}/ (provider-independent).
+
+Requires: numpy, rank_bm25, and the provider's SDK (openai or google-genai).
 """
 import argparse
 import json
@@ -16,19 +22,13 @@ from pathlib import Path
 import numpy as np
 from rank_bm25 import BM25Okapi
 
+import config
+import embedder
+
 
 # --- Config ---
-EMBEDDING_MODEL = "text-embedding-3-small"
 HYBRID_ALPHA = 0.6  # vector weight (1 - alpha = BM25 weight)
 DEFAULT_TOP_K = 20
-
-
-# --- Embedding ---
-def embed_query(query: str, api_key: str) -> np.ndarray:
-    from openai import OpenAI
-    client = OpenAI(api_key=api_key)
-    response = client.embeddings.create(model=EMBEDDING_MODEL, input=query)
-    return np.array(response.data[0].embedding, dtype=np.float32)
 
 
 # --- Vector Search ---
@@ -70,25 +70,22 @@ def bm25_search(query: str, bm25_data: dict, top_k: int) -> list:
 
 
 # --- Hybrid Search ---
-def hybrid_search(query: str, api_key: str, embeddings: np.ndarray,
-                  chunks: list, bm25_data: dict, top_k: int) -> list:
-    query_embedding = embed_query(query, api_key)
+def hybrid_search(query: str, embeddings: np.ndarray, chunks: list,
+                  bm25_data: dict, top_k: int,
+                  provider: str) -> list:
+    query_embedding = embedder.embed_query(query, provider=provider)
 
-    # Vector search
     vector_results = vector_search(query_embedding, embeddings, chunks, top_k * 2)
     vector_scores = {r["chunk_id"]: r["score"] for r in vector_results}
 
-    # BM25 search
     bm25_results = bm25_search(query, bm25_data, top_k * 2)
     bm25_scores = dict(bm25_results)
 
-    # Normalize BM25 scores to [0, 1]
     if bm25_scores:
         max_bm25 = max(bm25_scores.values())
         if max_bm25 > 0:
             bm25_scores = {k: v / max_bm25 for k, v in bm25_scores.items()}
 
-    # Combine
     all_chunk_ids = set(vector_scores.keys()) | set(bm25_scores.keys())
     combined = {}
     for cid in all_chunk_ids:
@@ -109,13 +106,44 @@ def hybrid_search(query: str, api_key: str, embeddings: np.ndarray,
                 "score": round(combined[cid], 4),
                 "matched_query": query,
             }
-            # Pass through both old and new metadata keys for backward compat
             for key in ("heading", "heading_level", "page_range", "source_file",
                         "chapter_number", "chapter_title", "section_title"):
                 if key in chunk:
                     result[key] = chunk[key]
             results.append(result)
     return results
+
+
+def _read_settings(settings_path_override: str = "") -> dict:
+    """Read the plugin settings file and return parsed frontmatter values."""
+    candidates = []
+    if settings_path_override:
+        candidates.append(Path(settings_path_override))
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
+    if project_dir:
+        candidates.append(Path(project_dir) / ".claude" / "fablers-agentic-rag.local.md")
+    candidates.append(Path.cwd() / ".claude" / "fablers-agentic-rag.local.md")
+
+    wanted = ("embedding_provider", "openai_api_key", "gemini_api_key")
+    result: dict = {}
+    for path in candidates:
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8")
+        if not text.startswith("---"):
+            continue
+        parts = text.split("---", 2)
+        if len(parts) < 3:
+            continue
+        for line in parts[1].strip().splitlines():
+            line = line.strip()
+            for key in wanted:
+                if line.startswith(f"{key}:"):
+                    value = line.split(":", 1)[1].strip()
+                    if value and not value.startswith("YOUR_"):
+                        result.setdefault(key, value)
+        break
+    return result
 
 
 def main():
@@ -125,33 +153,97 @@ def main():
     parser.add_argument("--top-k", type=int, default=DEFAULT_TOP_K)
     parser.add_argument("--per-query-min", type=int, default=2,
                         help="Minimum unique results guaranteed per query")
-    parser.add_argument("--api-key", default="", help="OpenAI API key")
+    parser.add_argument("--provider", default="",
+                        help="Embedding provider (openai|gemini). "
+                             "Falls back to settings file or config default.")
+    parser.add_argument("--api-key", default="", help="API key for the selected provider")
+    parser.add_argument("--settings", default="", help="Path to settings file")
     args = parser.parse_args()
 
     data_dir = Path(args.data_dir)
+    settings = _read_settings(args.settings)
 
-    # Validate data directory
-    chunks_file = data_dir / "chunks.json"
-    embeddings_file = data_dir / "embeddings.npz"
-    bm25_file = data_dir / "bm25_corpus.json"
+    # Resolve provider: --provider > settings > config default
+    provider = (args.provider
+                or settings.get("embedding_provider", "")
+                or config.EMBEDDING_PROVIDER)
+    try:
+        config.get_provider_config(provider)
+    except ValueError as e:
+        print(json.dumps({"error": str(e)}))
+        sys.exit(1)
 
-    for f in [chunks_file, embeddings_file, bm25_file]:
-        if not f.exists():
-            print(json.dumps({"error": f"Missing file: {f}"}))
-            sys.exit(1)
-
-    # API key: argument > env var
-    api_key = args.api_key or os.environ.get("OPENAI_API_KEY", "")
+    # Resolve API key for that provider
+    api_key = args.api_key or settings.get(f"{provider}_api_key", "")
+    env_var = {"openai": "OPENAI_API_KEY", "gemini": "GEMINI_API_KEY"}[provider]
+    api_key = api_key or os.environ.get(env_var, "")
     if not api_key:
-        print(json.dumps({"error": "OPENAI_API_KEY not set. Pass --api-key or set the environment variable."}))
+        print(json.dumps({
+            "error": f"{env_var} not set. Pass --api-key, set the env var, "
+                     f"or configure {provider}_api_key in the settings file."
+        }))
+        sys.exit(1)
+    embedder.set_api_key(api_key, provider=provider)
+
+    # Validate index files
+    chunks_file = data_dir / "chunks.json"
+    bm25_file = data_dir / "bm25_corpus.json"
+    embeddings_dir = config.get_embedding_dir(data_dir, provider)
+    embeddings_file = embeddings_dir / "embeddings.npz"
+
+    missing = [str(f) for f in (chunks_file, bm25_file, embeddings_file) if not f.exists()]
+    if missing:
+        legacy = data_dir / "embeddings.npz"
+        parts = [
+            f"Missing index files for provider={provider}:",
+            *[f"  - {p}" for p in missing],
+        ]
+        if legacy.exists():
+            parts.extend([
+                "",
+                f"Legacy embeddings.npz detected at {legacy}.",
+                f"To migrate, re-run ingestion so the index lands under "
+                f"embeddings/{provider}/. The legacy file's provider/model is "
+                f"unknown, so re-ingestion is the safe path.",
+            ])
+        else:
+            parts.append(
+                f"Run ingestion first: python3 ingest.py --document <path> "
+                f"--output-dir {data_dir} --provider {provider}"
+            )
+        print(json.dumps({"error": "\n".join(parts)}))
+        sys.exit(1)
+
+    # Validate index meta against current provider/model
+    meta = embedder.read_index_meta(embeddings_dir / "index.meta.json")
+    expected = config.get_provider_config(provider)
+    if meta is None:
+        # Index without self-describing metadata — likely manually-moved legacy.
+        # Don't block, but warn loudly so dimension mismatch isn't silent.
+        print(
+            f"⚠  No index.meta.json at {embeddings_dir}. "
+            f"Cannot verify model/dimension match current config "
+            f"(provider={provider}, model={expected['model']}, "
+            f"dim={expected['dimension']}). Re-ingest to add metadata "
+            f"and silence this warning.",
+            file=sys.stderr,
+        )
+    elif meta.get("model") != expected["model"] or meta.get("dimension") != expected["dimension"]:
+        print(json.dumps({
+            "error": (
+                f"Index at {embeddings_dir} was built with "
+                f"model={meta.get('model')} dim={meta.get('dimension')}, "
+                f"but current config expects model={expected['model']} "
+                f"dim={expected['dimension']}. Re-ingest with "
+                f"--provider {provider} to rebuild."
+            )
+        }))
         sys.exit(1)
 
     # Load data
     with open(chunks_file, "r", encoding="utf-8") as f:
         chunks = json.load(f)
-
     embeddings = np.load(embeddings_file)["embeddings"]
-
     with open(bm25_file, "r", encoding="utf-8") as f:
         bm25_data = json.load(f)
 
@@ -159,14 +251,13 @@ def main():
     per_query_results = {}
     for query in args.queries:
         per_query_results[query] = hybrid_search(
-            query, api_key, embeddings, chunks, bm25_data, args.top_k
+            query, embeddings, chunks, bm25_data, args.top_k, provider
         )
 
-    # Phase 1: Guarantee per_query_min unique results per query (score-ordered)
+    # Phase 1: guarantee per_query_min unique results per query
     per_query_min = args.per_query_min
     seen_chunk_ids = set()
     guaranteed = []
-
     for query, results in per_query_results.items():
         count = 0
         for r in results:
@@ -175,7 +266,7 @@ def main():
                 guaranteed.append(r)
                 count += 1
 
-    # Phase 2: Fill remaining slots from all results by score
+    # Phase 2: fill remaining slots by score
     remaining = []
     for results in per_query_results.values():
         for r in results:
@@ -184,8 +275,7 @@ def main():
                 remaining.append(r)
     remaining.sort(key=lambda x: x["score"], reverse=True)
 
-    merged_results = guaranteed + remaining
-    merged_results = merged_results[:args.top_k]
+    merged_results = (guaranteed + remaining)[:args.top_k]
 
     print("RETRIEVAL_RESULTS:")
     print(json.dumps(merged_results, indent=2, ensure_ascii=False))

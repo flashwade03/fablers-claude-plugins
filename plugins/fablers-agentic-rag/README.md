@@ -7,7 +7,7 @@
 A Claude Code plugin that runs an agentic RAG pipeline — query analysis, hybrid retrieval, evaluation with CRAG validation, and cited answer synthesis — all orchestrated by Claude agents. Supports PDF, plain text, and Markdown.
 
 [![Claude Code Plugin](https://img.shields.io/badge/Claude_Code-Plugin-blueviolet?style=for-the-badge)](https://claude.ai)
-[![Version](https://img.shields.io/badge/version-3.0.0-blue?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/version-3.1.0-blue?style=for-the-badge)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
 [English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md)
@@ -75,6 +75,25 @@ numpy arrays + in-memory BM25 — no vector DB, no server, no Docker. If your da
 ---
 
 ## What's new
+
+### v3.1.0 — Pluggable embeddings (Gemini default)
+
+OpenAI embeddings are no longer required. The pipeline now dispatches between providers via a single `embedding_provider` setting:
+
+- **`gemini`** (new default) — `gemini-embedding-2-preview` (3072 dim). Uses `RETRIEVAL_DOCUMENT` / `RETRIEVAL_QUERY` task types for ingestion vs. query.
+- **`openai`** — `text-embedding-3-small` (1536 dim). Existing behavior preserved.
+
+Index layout changed to per-provider subdirectories so both can coexist:
+```
+{rag_data_path}/
+├── chunks.json              # shared
+├── bm25_corpus.json         # shared
+└── embeddings/
+    ├── gemini/{embeddings.npz, metadata.json, index.meta.json}
+    └── openai/{embeddings.npz, metadata.json, index.meta.json}
+```
+
+**Migration from v3.0.x**: Existing `embeddings.npz` at the data root is no longer read. Re-run `/ingest` to rebuild under the new layout. The legacy file is left in place; delete it after verifying the new index works. Search will print a clear migration hint if it can't find the new layout.
 
 ### v3.0.0 — Command rename (breaking)
 
@@ -145,10 +164,20 @@ In Claude Code, add the marketplace and install:
 
 ### 2. Prepare your data
 
-Install dependencies and run the ingestion pipeline:
+Install dependencies. Pick the SDK for whichever embedding provider you want — you only need one:
 
 ```bash
-pip install openai numpy rank_bm25 pdfplumber
+# Always required
+pip install pdfplumber numpy rank_bm25
+
+# Provider-specific (install whichever you'll use)
+pip install google-genai   # for embedding_provider: gemini  (default)
+pip install openai         # for embedding_provider: openai
+```
+
+Then run the ingestion pipeline:
+
+```bash
 cd scripts && python3 ingest.py --document /path/to/your/document.pdf --output-dir ../data
 ```
 
@@ -162,8 +191,12 @@ On first session start, the plugin creates `.claude/fablers-agentic-rag.local.md
 
 ```yaml
 rag_data_path: /absolute/path/to/data
-openai_api_key: sk-...
+embedding_provider: gemini       # or "openai"
+gemini_api_key: AIza...           # required if provider = gemini
+openai_api_key: sk-...            # required if provider = openai
 ```
+
+You only need the API key for the provider you select. To compare providers, ingest the same document with both — embeddings are stored per-provider and `chunks.json`/`bm25_corpus.json` are reused.
 
 ### 4. Ask
 
@@ -186,7 +219,7 @@ openai_api_key: sk-...
 ```
 fablers-agentic-rag/                  ← plugin root
 ├── .claude-plugin/
-│   └── plugin.json                   # Plugin manifest (v3.0.0)
+│   └── plugin.json                   # Plugin manifest (v3.1.0)
 ├── agents/
 │   ├── query-analyst.md              # Query decomposition
 │   ├── evaluator.md                  # Reranking + CRAG validation
@@ -198,11 +231,11 @@ fablers-agentic-rag/                  ← plugin root
 ├── skills/
 │   └── ask/SKILL.md                  # Pipeline orchestration
 ├── scripts/
-│   ├── search.py                     # Hybrid search engine
-│   ├── ingest.py                     # Document ingestion pipeline
+│   ├── search.py                     # Hybrid search (provider-aware)
+│   ├── ingest.py                     # Document ingestion (provider-aware)
 │   ├── chunker.py                    # Auto-detect chunking strategy
-│   ├── embedder.py                   # OpenAI embeddings
-│   ├── config.py                     # Chunking/embedding settings
+│   ├── embedder.py                   # Provider dispatcher (openai + gemini)
+│   ├── config.py                     # Provider/model registry, path helpers
 │   └── session-start.sh              # Session initialization
 ├── hooks/
 │   └── hooks.json                    # Event hooks

@@ -8,7 +8,7 @@
 設計方法論、ドキュメント鍛造、エージェンティックRAG — すべてを一箇所で。
 
 [![Claude Code Marketplace](https://img.shields.io/badge/Claude_Code-Marketplace-blueviolet?style=for-the-badge)](https://claude.ai)
-[![Version](https://img.shields.io/badge/version-0.10.0-blue?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/version-0.10.1-blue?style=for-the-badge)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
 [English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md)
@@ -56,7 +56,7 @@
 
 ### `fablers-agentic-rag` — ドキュメントに質問。引用付きの回答を取得。
 
-エージェンティックRAGパイプライン — クエリ分析、ハイブリッド検索（ベクトル + BM25）、CRAG検証、引用付き回答合成 — すべてClaudeエージェントがオーケストレーション。PDF、テキスト、Markdownに対応。
+エージェンティックRAGパイプライン — クエリ分析、ハイブリッド検索（ベクトル + BM25）、CRAG検証、引用付き回答合成 — すべてClaudeエージェントがオーケストレーション。PDF、テキスト、Markdownに対応。埋め込みバックエンド選択可能：**Gemini**（`gemini-embedding-2-preview`、デフォルト）または **OpenAI**（`text-embedding-3-small`）。
 
 ```
 > /ingest <ファイル>                # ドキュメントのインデックス作成
